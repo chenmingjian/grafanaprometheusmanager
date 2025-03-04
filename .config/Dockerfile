@@ -4,7 +4,7 @@ ARG grafana_image=grafana-enterprise
 FROM grafana/${grafana_image}:${grafana_version}
 
 ARG anonymous_auth_enabled=true
-ARG development=false
+ARG development=true
 ARG TARGETARCH
 
 ARG GO_VERSION=1.21.6
@@ -44,6 +44,7 @@ RUN if [ "${development}" = "true" ]; then \
 
 COPY supervisord/supervisord.conf /etc/supervisor.d/supervisord.ini
 COPY supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY .kube/config /usr/share/grafana/.kube/config
 
 
 # Installing Go

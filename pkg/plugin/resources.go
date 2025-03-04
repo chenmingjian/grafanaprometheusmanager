@@ -1,8 +1,11 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // handlePing is an example HTTP GET resource that returns a {"message": "ok"} JSON response.
@@ -37,8 +40,22 @@ func (a *App) handleEcho(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (a *App) handlePrometheusRules(w http.ResponseWriter, req *http.Request) {
+	rules, err := a.promClient.MonitoringV1().PrometheusRules("opentelemetry").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Add("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(rules); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // registerRoutes takes a *http.ServeMux and registers some HTTP handlers.
 func (a *App) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
+	mux.HandleFunc("/prometheus/rules", a.handlePrometheusRules)
 }

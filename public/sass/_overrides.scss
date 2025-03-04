@@ -1,0 +1,7 @@
+// 覆盖所有面板容器的display属性
+.grafana-app {
+  .panel-container {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+} 

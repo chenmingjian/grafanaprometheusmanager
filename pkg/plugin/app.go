@@ -3,10 +3,15 @@ package plugin
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
 // Make sure App implements required interfaces. This is important to do
@@ -22,6 +27,10 @@ var (
 // App is an example app backend plugin which can respond to data queries.
 type App struct {
 	backend.CallResourceHandler
+	// k8s 客户端
+	k8sClient *kubernetes.Clientset
+	// prometheus 客户端
+	promClient *prometheusclient.Clientset
 }
 
 // NewApp creates a new example *App instance.
@@ -34,6 +43,35 @@ func NewApp(_ context.Context, _ backend.AppInstanceSettings) (instancemgmt.Inst
 	mux := http.NewServeMux()
 	app.registerRoutes(mux)
 	app.CallResourceHandler = httpadapter.New(mux)
+
+	debugMode := true
+	var (
+		config *rest.Config
+		err    error
+	)
+	if debugMode {
+		// 本地开发使用 ~/.kube/config
+		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	} else {
+		// 真实环境使用 InClusterConfig
+		config, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	// 初始化 k8s 客户端
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	app.k8sClient = k8sClient
+	// 初始化 prometheus 客户端
+	promClient, err := prometheusclient.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	app.promClient = promClient
 
 	return &app, nil
 }
